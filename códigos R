@@ -1,0 +1,183 @@
+library(openxlsx)
+library(dae)
+library(mvnormtest)
+library(QuantPsyc)
+library(agricolae)
+options(scipen=100)
+##################################################
+################### Armadilhas ###################
+##################################################
+################# Dados Brutos ###################
+armadilhas <- read.xlsx(file.choose())
+armadilhas <- armadilhas[,c(3,4,5,6,8,9)]
+colnames(armadilhas) <- c("sujeito","semana","trat","bloco","moscab","rank")
+armadilhas$semana <- as.factor(armadilhas$semana)
+armadilhas$trat <- as.factor(armadilhas$trat)
+armadilhas$bloco <- as.factor(armadilhas$bloco)
+armadilhas$sujeito <- as.factor(armadilhas$sujeito)
+attach(armadilhas)
+
+m <- 9 #medidas repetidas
+##################### estimação dos parâmetros
+##### separando por semanas
+##### ANOVA por medidas repetidas trata cada medida por uma variável resposta (multinível)
+##### Y_ijk = medida_k + trat_i + bloco_j + erro_ijk
+tapply(moscab,semana,mean)
+tapply(moscab,semana:trat,mean)-rep(tapply(moscab,semana,mean),each=5)
+tapply(moscab,semana:bloco,mean)-rep(tapply(moscab,semana,mean),each=3)
+
+plot(moscab~trat)
+plot(moscab~bloco)
+plot(moscab~semana)
+interaction.plot(semana,trat,moscab)
+interaction.plot(semana,bloco,moscab)
+
+# Análise de variância
+modelo <- aov(moscab ~ (trat +bloco) * semana + Error(sujeito/semana), data=armadilhas)
+summary(modelo)
+
+################## residuos
+residuos <- as.matrix(read.xlsx(file.choose()))
+residuos <- residuos[,21:29]
+contrastes <- as.matrix(read.xlsx(file.choose()))
+
+s<- t(residuos)%*%residuos
+E <- contrastes%*%s%*%t(contrastes) # Matriz E fornecida pelo SAS
+
+#################### teste de mauschly
+w <- ((m-1)**(m-1))*det(E)/(sum(diag(E))**(m-1))
+gama <- 8-((2*81-27+3)/(48))
+chi <- -gama*log(w,base=exp(1))
+1-pchisq(chi,(m*(m-1)/2-1))
+
+################### correções matriz de erros dada pelo SAS
+gg <- (sum(diag(E))**2)/((m-1)*sum((E)**2))
+hfl <- (9*(m-1)*gg-2)/((m-1)*(8-(m-1)*gg))
+
+################### testes de normalidade
+shapiro.test(residuos) #todos os resíduos juntos
+apply(residuos,2,shapiro.test) # resíduos por medida repetida
+apply(residuos,1,shapiro.test) # resíduos por unidade experimental
+
+##################################################
+################### Ranques ######################
+attach(armadilhas)
+##################### estimação dos parâmetros
+##### separando por semanas
+tapply(rank,semana,mean)
+tapply(rank,semana:trat,mean)-rep(tapply(rank,semana,mean),each=5)
+tapply(rank,semana:bloco,mean)-rep(tapply(rank,semana,mean),each=3)
+
+plot(rank~trat)
+plot(rank~bloco)
+plot(rank~semana)
+interaction.plot(semana,trat,rank)
+interaction.plot(semana,bloco,rank)
+#Anova
+modelo <- aov(rank ~ (trat +bloco) * semana + Error(sujeito/semana), data=armadilhas)
+summary(modelo)
+
+################## residuos
+residuos <-as.matrix(read.xlsx(file.choose()))
+residuos <- residuos[,22:30]
+contrastes <- as.matrix(read.xlsx(file.choose()))
+
+s<- t(residuos)%*%residuos
+E <- contrastes%*%s%*%t(contrastes) # Matriz E fornecida pelo SAS
+
+#################### teste de mauschly
+w <- ((m-1)**(m-1))*det(E)/(sum(diag(E))**(m-1))
+gama <- 8-(2*m**2-3*m+3)/(6*(m-1))
+chi <- -gama*log(w,base=exp(1))
+1-pchisq(chi,(m*(m-1)/2-1))
+
+################### correções matriz de erros dada pelo SAS
+gg <- (sum(diag(E))**2)/((m-1)*sum((E)**2))
+hfl <- (9*(m-1)*gg-2)/((m-1)*(8-(m-1)*gg))
+gg
+hfl
+
+
+
+##################################################
+#################### Plantas #####################
+##################################################
+################# Dados Brutos ###################
+
+plantas <- read.xlsx(file.choose())
+colnames(plantas) <- c("semana","sujeito","trat","bloco","planta","moscab","rank")
+plantas$semana <- as.factor(plantas$semana)
+plantas$trat <- as.factor(plantas$trat)
+plantas$bloco <- as.factor(plantas$bloco)
+plantas$sujeito <- as.factor(plantas$sujeito)
+attach(plantas)
+m <- 7 #medidas repetidas
+##### tratando o experimento sem levar em consideração as medidas repetidas (split plot)
+##### separando por semanas
+tapply(moscab,semana,mean)
+tapply(moscab,semana:trat,mean)-rep(tapply(moscab,semana,mean),each=5)
+tapply(moscab,semana:bloco,mean)-rep(tapply(moscab,semana,mean),each=3)
+plot(moscab~semana)
+interaction.plot(semana,trat,moscab)
+interaction.plot(semana,bloco,moscab)
+interaction.ABC.plot(moscab,semana,trat,bloco,data=plantas)
+
+modelo <- aov(moscab ~ trat *bloco * semana + Error(sujeito/semana), data=plantas)
+summary(modelo)
+################## residuos
+residuos <- as.matrix(read.xlsx(file.choose()))
+residuos <- residuos[,19:25]
+contrastes <- as.matrix(read.xlsx(file.choose()))
+
+s<- t(residuos)%*%residuos
+E <- contrastes%*%s%*%t(contrastes) # Matriz E fornecida pelo SAS
+
+#################### teste de mauschly
+w <- ((m-1)**(m-1))*det(E)/(sum(diag(E))**(m-1))
+gama <- 84-(2*m**2-3*m+3)/(6*(m-1))
+chi <- -gama*log(w,base=exp(1))
+1-pchisq(chi,(9*(9-1)/2-1))
+
+################### correções matriz de erros dada pelo SAS
+gg <- (sum(diag(E))**2)/((m-1)*sum((E)**2))
+hfl <- (85*(m-1)*gg-2)/((m-1)*(84-(m-1)*gg))
+gg
+hfl
+
+
+
+##################################################
+################### Ranques ######################
+attach(plantas)
+##################### estimação dos parâmetros
+##### separando por semanas
+tapply(rank,semana,mean)
+tapply(rank,semana:trat,mean)-rep(tapply(rank,semana,mean),each=5)
+tapply(rank,semana:bloco,mean)-rep(tapply(rank,semana,mean),each=3)
+
+interaction.plot(semana,trat,rank)
+interaction.plot(semana,bloco,rank)
+interaction.ABC.plot(rank,semana,trat,bloco,data=plantas)
+
+
+################## residuos
+residuos <-as.matrix(read.xlsx(file.choose()))
+residuos <- residuos[,19:25]
+contrastes <- as.matrix(read.xlsx(file.choose()))
+
+s<- t(residuos)%*%residuos
+E <- contrastes%*%s%*%t(contrastes) # Matriz E fornecida pelo SAS
+
+#################### teste de mauschly
+w <- ((m-1)**(m-1))*det(E)/(sum(diag(E))**(m-1))
+gama <- 8-(2*m**2-3*m+3)/(6*(m-1))
+chi <- -gama*log(w,base=exp(1))
+1-pchisq(chi,(m*(m-1)/2-1))
+
+################### correções matriz de erros dada pelo SAS
+gg <- (sum(diag(E))**2)/((m-1)*sum((E)**2))
+hfl <- (85*(m-1)*gg-2)/((m-1)*(84-(m-1)*gg))
+gg
+hfl
+
+
