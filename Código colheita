@@ -1,0 +1,125 @@
+library(openxlsx)
+library(dplyr)
+library(ggplot2)
+library(MASS)
+library(car)
+########################### Modelo para dados de colheita
+colheita <- read.xlsx(file.choose())
+colheita$bloco <- factor(colheita$bloco)
+colheita$trat <- factor(colheita$trat)
+colheita$planta <- factor(colheita$planta)
+
+
+attach(colheita)
+mean(frutos)
+var(frutos)
+# modelo saturado (trat, bloco e interação)
+mod1 <-glm(frutos ~ bloco*trat, data = colheita,family = poisson)
+summary(mod1) #AIC=296.9
+
+# modelo trat e interação
+mod2 <-glm(frutos ~ trat+bloco:trat, data = colheita,family = poisson)
+summary(mod2) #AIC= 296.9
+
+# modelo bloco e interação
+mod3 <-glm(frutos ~ bloco+bloco:trat, data = colheita,family = poisson)
+summary(mod3) #AIC=296.9
+
+#modelo trat e bloco
+mod4 <-glm(frutos ~ bloco+trat, data = colheita,family = poisson(link="sqrt"))
+summary(mod4) #AIC=288.36
+
+#modelo trat
+mod5 <-glm(frutos ~ trat, data = colheita,family = poisson)
+summary(mod5) #AIC=284.39
+
+#modelo bloco
+mod6 <-glm(frutos ~ bloco, data = colheita,family = poisson)
+summary(mod6) #AIC=284.86
+
+#modelo interações
+mod8 <-glm(frutos ~ trat:bloco, data = colheita,family = poisson)
+summary(mod8) #AIC=284.86
+
+
+################## Modelos binomial negativa
+# modelo saturado
+mod1_binneg <- glm.nb(frutos~bloco*trat, data = colheita)
+summary(mod1_binneg)
+
+# modelo trat interação
+mod2_binneg <- glm.nb(frutos~trat+trat:bloco, data = colheita)
+summary(mod2_binneg)
+
+# modelo trat bloco
+mod3_binneg <- glm.nb(frutos~trat+bloco, data = colheita)
+summary(mod3_binneg)
+
+
+# modelo bloco interações
+mod4_binneg <- glm.nb(frutos~bloco+bloco:trat, data = colheita)
+summary(mod4_binneg)
+
+# modelo trat
+mod5_binneg <- glm.nb(frutos~trat, data = colheita)
+summary(mod5_binneg)
+
+# modelo bloco
+mod6_binneg <- glm.nb(frutos~bloco, data = colheita)
+summary(mod6_binneg)
+
+# modelo bloco
+mod7_binneg <- glm.nb(frutos~trat:bloco, data = colheita)
+summary(mod7_binneg)
+
+# modelo vazio
+mod8_binneg <- glm.nb(frutos~1, data = colheita)
+summary(mod8_binneg)
+
+################## MELHOR MODELO
+#modelo simples 
+mod7 <-glm(frutos ~ 1, data = colheita,family = poisson(link="log"))
+summary(mod7) #AIC=281.19
+
+deviance <- deviance(mod7)
+
+res_dev <- resid(mod7,type="deviance")
+plot(res_dev)+abline(0,0)
+shapiro.test(res_dev)
+1-pchisq(deviance,59)
+
+plot(res_dev ~ jitter(mod7$fitted.values, 0.5), pch = 15,main="Valores preditos X resíduos",xlab="Valores preditos",ylab="Resíduos deviance")
+abline(0,0)
+
+influenceIndexPlot(mod7, vars=c("Cook"), main="Distância de Cook")
+influenceIndexPlot(mod7, vars=c("Studentized"), main="Resíduos Padronizados")
+
+
+envelope=function(modelo){
+  dados=na.omit(modelo$data)
+  nsim=100
+  n=modelo$df.null+1
+  r1=sort(rstandard(modelo,type='deviance'))
+  m1=matrix(0,nrow=n,ncol=nsim)
+  a2=simulate(modelo,nsim=nsim)
+  
+  for (i in 1:nsim){
+    dados$y=a2[,i]
+    aj=update(modelo,y~.,data=dados)
+    m1[,i]=sort(rstandard(aj,type='deviance'))}
+  
+  li=apply(m1,1,quantile,0.025)
+  m=apply(m1,1,quantile,0.5)
+  ls=apply(m1,1,quantile,0.975)
+  
+  quantis=qnorm((1:n-0.5)/n)
+  
+  plot(rep(quantis,2),c(li,ls),type='n',xlab='Percentil da N(0,1)',ylab='Resíduos')
+  title('Gráfico Normal de Probabilidades')
+  lines(quantis,li,type='l')
+  lines(quantis,m,type='l',lty=2)
+  lines(quantis,ls,type='l')
+  points(quantis,r1,pch=16,cex=0.75)
+}
+envelope(mod7)
+         
