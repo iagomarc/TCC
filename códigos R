@@ -3,6 +3,10 @@ library(dae)
 library(mvnormtest)
 library(QuantPsyc)
 library(agricolae)
+library(dplyr)
+library(factoextra)
+ library(ExpDes.pt)
+library(ScottKnott)
 options(scipen=100)
 ##################################################
 ################### Armadilhas ###################
@@ -59,6 +63,10 @@ shapiro.test(residuos) #todos os resíduos juntos
 apply(residuos,2,shapiro.test) # resíduos por medida repetida
 apply(residuos,1,shapiro.test) # resíduos por unidade experimental
 
+
+scottknott(armadilhas$moscab,armadilhas$trat,8,28289708)
+
+
 ##################################################
 ################### Ranques ######################
 attach(armadilhas)
@@ -98,6 +106,7 @@ gg
 hfl
 
 
+scottknott(armadilhas$rank,armadilhas$trat,8,494.6)
 
 ##################################################
 #################### Plantas #####################
@@ -146,6 +155,8 @@ hfl
 
 
 
+scottknott(plantas$moscab,plantas$trat,84,74584,group=T)
+
 ##################################################
 ################### Ranques ######################
 attach(plantas)
@@ -160,6 +171,8 @@ interaction.plot(semana,bloco,rank)
 interaction.ABC.plot(rank,semana,trat,bloco,data=plantas)
 
 
+modelo <- aov(rank ~ trat *bloco * semana + Error(sujeito/semana), data=plantas)
+summary(modelo)
 ################## residuos
 residuos <-as.matrix(read.xlsx(file.choose()))
 residuos <- residuos[,19:25]
@@ -180,4 +193,7 @@ hfl <- (85*(m-1)*gg-2)/((m-1)*(84-(m-1)*gg))
 gg
 hfl
 
+
+
+scottknott(plantas$rank,plantas$trat,84,43892,group=T)
 
