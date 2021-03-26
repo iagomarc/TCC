@@ -1,0 +1,1083 @@
+---
+title: "TCC"
+author: "Iago"
+date: "25/03/2021"
+output: html_document
+---
+
+```{r,include=FALSE}
+library(openxlsx)
+library(agricolae)
+library(dplyr)
+library(car)
+library(ggplot2)
+library(factoextra)
+ library(ExpDes.pt)
+library(MASS)
+options(scipen=3)
+```
+
+### Metodologia
+
+A Análise de variância por medidas repetidas é uma técnica paramétrica de comparação de médias em que as unidades experimentais são avaliadas periodicamente, fornecendo informações sobre tendências temporais do experimento, tais quais quanto tempo um tratamento leva para fazer efeito ou quanto tempo esse efeito dura. A repetida avaliação sobre uma mesma unidade experimental é mais eficiente para comparar a ação do tempo sobre os tratamentos, já que as medidas obtidas sob uma única unidade são menos variáveis do que as obtidas com várias unidades experimentais.
+
+Nesse contexto, temos que a ANOVA por medidas repetidas investiga os dados sob dois aspectos: entre unidades experimentais e dentro das unidades experimentais. A análise entre unidades experimentais trata sobre a variância produzida pelo efeito da estrutura de tratamentos e blocos, chamados de condições do experimento. Já a análise dentro das unidades experimentais é focada na variância produzida pelas medidas repetidas, ou seja, proveniente das avaliações periódicas. 
+Além disso, podemos separar a variância dentro das unidades experimentais em variância inerente às unidades experimentais e variância do erro.
+
+A ANOVA por medidas repetidas requer que quatro suposições sobre a população sejam atendidas para garantir que o modelo proposto é adequado aos dados. São elas: normalidade, homocedasticidade, independência das observações e Simetria Composta.
+
+
+A condição de Simetria Composta é definida como a situação onde as medidas repetidas possuem a mesma variância e covariância, resultando na seguinte matriz de covariâncias:
+
+![](/cloud/project/matriz.png)
+
+onde $m$ é o número de medidas repetidas.
+
+ É infactível assumir que essa rigorosa suposição seja cumprida pelos dados, visto que, intuitivamente, pares de observações de uma mesma unidade experimental pegos em tempos adjacentes tendem a ter uma maior correlação que observações medidas em uma distância temporal maior.
+ 
+ 
+ Por consequência, Huynh e Felt demonstraram que a condição necessária para a ANOVA por medidas repetidas é menos severa do que a Simetria Composta. Assim, para que a ANOVA por medidas repetidas seja válida, é necessário que a variância da diferença de todos os pares de medidas repetidas da matriz de covariâncias seja igual. Essa característica é denominada esfericidade e pode ser definida matematicamente por:
+ 
+
+
+ \begin{equation*}
+     \sigma^2_{(y_i-y_j)}=2\lambda\end{equation*} ou
+      \begin{equation*}
+     \sigma_{ij}=\frac{\sigma_{ii}+\sigma_{jj}}{2}-\lambda
+ \end{equation*}
+
+ onde $\lambda$ é uma constante qualquer maior que 0. 
+
+ Uma matriz de covariâncias que atenda a essa condição é conhecida como matriz do tipo H, ou seja,
+   $$  \Sigma_{n\times n}= A_{n\times n} + A'_{n\times n} + \lambda I_{n\times n}.$$
+
+ 
+ Assim, utilizando a matriz de covariâncias estimada $S$ e uma matriz de contrastes ortogonais $C$, a hipótese de que a matriz de covariâncias populacional é uma matriz H esférica pode ser avaliada pelo teste de Mauchly.
+
+Como demonstrado em Huynh 1970, ao multiplicar $\Sigma$ por uma matriz de contrastes normalizados C, na forma $C\Sigma C'$, $AC'= CA' = 0$. Portanto, em caso de esfricidade, $C\Sigma C'= \lambda I$.
+
+
+A hipótese nula do teste de Mauschly para esfericidade é
+$H_0) C\Sigma C'= \lambda I$
+
+
+A estatística do teste de esfericidade é
+$\chi^2=-\gamma \times ln(W)$, onde $\gamma=DFE-\frac{2m^2-3m+3}{6(m-1)}$.
+
+DFE é o número de graus de liberdade do erro da análise de entre sujeitos. Para armadilhas, $DFE =8$ e para plantas $DFE=84$.
+
+W é chamado de critério de Mauschly e é igual a 
+ $\frac{(m-1)^{m-1}\times |\textit{CSC'}|}{tr(\textit{CSC'})^{s-1}}$
+
+A estatística do teste tem distribuição $\chi^2$ com $\frac{m(m-1)}{2}-1$ graus de liberdade sob a hipótese nula.
+
+
+## Correções nos graus de liberdade
+
+Um índice $\varepsilon$ sugerido por Box é capaz de medir o nível de esfericidade de uma matriz de covariâncias estimada. Essa medida varia de 0 a 1, sendo o valor máximo um indicativo de que os dados são perfeitamente esféricos. Quando existem indícios de que a hipótese de esfericidade não está sendo atendida, os graus de liberdade do teste $F$ da ANOVA por medidas repetidas são corrigidos multiplicando-os pelo índice $\varepsilon$. Portanto, a estatística do teste F da Análise de variância por medidas repetidas terá distribuição
+\begin{equation*}
+    F \mathtt{\sim} F(\varepsilon\nu_1;\varepsilon\nu_2)
+\end{equation*}
+ sob a hipótese nula, onde $\nu_1$ e $\nu_2$ indicam os graus de liberdade da distribuição $F$.
+
+Baseando-se nessa abordagem, Greenhouse e Geisser; e Huynh e Felt e Lacoutre \cite{abdi:2010} desenvolveram medidas de correção que utilizam os autovalores da matriz de covariâncias estimada. Assim, a correção de Greenhouse-Geisser é definida por:
+correção de Greenhouse-Geisser utiliza os valores da diagonal principal da matriz $CSC'$
+\begin{equation*}
+            \hat{\varepsilon}_{gg}=\frac{\left(\sum_{i=1}^{m-1}\limits a_{ii}\right)^2}{(m-1)\sum_{i=1}^{m-1}\limits\sum_{j=1}^{m-1}\limits a_{ij}^2}
+      \end{equation*}
+
+Onde $\a_{ii}$ são os valores da diagonal principal da matriz de variâncias e covariâncias estimada.        
+Caso exista esfericidade na matriz de covariâncias estimadas, $V$ é igual a $m-1$.
+Por fim, a Correção de Huynh e Feldt Lacoutre é baseada na correção de Greenhouse-Geisser e é aplicada apenas quando existem fatores entre sujeitos, tais como o tratamento e os blocos.
+
+  \begin{equation*}
+            \hat{\varepsilon}_{hfl}=\frac{(DFE+1)\times(m-1)\hat{\varepsilon}_{gg}-2}{(m-1)\times(DFE-(m-1)\hat{\varepsilon}_{gg})}.
+        \end{equation*} 
+
+
+### Modelagem
+
+Estou trabalhando com um modelo Split-plot, tal como sugeriu o livro do KUEHL, na forma:
+\begin{equation*}
+    Y_{ijk}= \mu +\tau_i + \beta_j + d_{ij} + m_k + (m\tau)_{ik} +(m\beta)_{jk}+\varepsilon_{ijk},
+\end{equation*}
+para as armadilhas.
+
+- $ \tau_i $ é o efeito dos tratamentos
+
+- $\beta_j$ o efeito dos blocos
+
+- $d_{ij}$ o erro 1
+
+- $m_k$ o efeito das medidas repetidas
+
+- $(m\tau)_{ik}$ a interação entre as medidas repetidas e os tratamentos
+
+- $(m\beta)_{jk}$ a interação entre as medidas repetidas e os blocos
+
+- $\varepsilon_{ijk}$ o erro 2.
+
+
+
+Ao fazer a estimativa de parâmetros, tal qual eu fazia na aula de delineamento, utilizando $tapply$, muitas vezes eu obtenho valores preditos negativos, o que não é condizente com a natureza do estudo. Por exemplo, com os dados de armadilhas:
+```{r,include=FALSE}
+armadilhas <- read.xlsx("/cloud/project/Armadilhas_R.xlsx")
+armadilhas <- armadilhas[,c(3,4,5,6,8,9)]
+colnames(armadilhas) <- c("sujeito","semana","trat","bloco","moscab","rank")
+armadilhas$semana <- as.factor(armadilhas$semana)
+armadilhas$trat <- as.factor(armadilhas$trat)
+armadilhas$bloco <- as.factor(armadilhas$bloco)
+armadilhas$sujeito <- as.factor(armadilhas$sujeito)
+attach(armadilhas)
+```
+
+```{r}
+mu <- mean(moscab)
+taus <- tapply(moscab,trat,mean)-mean(moscab)
+betas <- tapply(moscab,bloco,mean)-mean(moscab)
+semanas <- tapply(moscab,semana,mean)-mean(moscab)
+int_semana_trat <- tapply(moscab,semana:trat,mean)-mean(moscab)
+int_semana_bloco <- tapply(moscab,semana:bloco,mean)-mean(moscab)
+```
+para o valor estimado da primeira observação do tratamento 1, bloco 1 e semana 1 das armadilhas temos:
+```{r}
+
+mu+taus[1]+betas[1]+semanas[1]+int_semana_bloco[1]+int_semana_trat[1]
+```
+
+Utilizando outra combinação de variáveis, temos os valores fornecidos pelo SAS e pelo R. 
+
+```{r}
+X1 <- tapply(moscab,semana,mean)
+X2 <- tapply(moscab,semana:trat,mean)-rep(tapply(moscab,semana,mean),each=5)
+X3 <- tapply(moscab,semana:bloco,mean)-rep(tapply(moscab,semana,mean),each=3)
+
+X1[1]+X2[1]+X3[1]
+```
+Não sei o porquê desse erro.
+
+
+
+#### Resultados Armadilhas
+
+## Dados brutos
+
+Estimativa dos parâmetros do modelo:
+```{r}
+m <- 9 #quantidade de medidas repetidas
+tapply(moscab,semana,mean)
+tapply(moscab,semana:trat,mean)-rep(tapply(moscab,semana,mean),each=5)
+tapply(moscab,semana:bloco,mean)-rep(tapply(moscab,semana,mean),each=3)
+
+```
+
+Valores preditos e Resíduos (cada coluna indica uma semana):
+```{r}
+pred_res <- read.xlsx("/cloud/project/pred_res_armadilhas.xlsx")
+preditos <- pred_res[,c(12:20)]
+preditos
+
+residuos <- as.matrix(pred_res[,21:29])
+residuos
+```
+
+Matriz de covriâncias estimada e matriz 8x9 de contrastes fornecidas pelo SAS:
+```{r}
+S<- t(residuos)%*%residuos #matriz de covariâncias
+S
+
+C <- as.matrix(read.xlsx("/cloud/project/contrastes_armadilhas.xlsx"))
+C
+```
+
+Cálculo da matriz do teste de Mauschly
+```{r}
+CSC <- C%*%S%*%t(C) #Matriz 8x8 para teste de Mauschly 
+CSC
+```
+
+Teste de esfericidade:
+```{r}
+#################### teste de esfericidade
+
+w <- ((m-1)**(m-1))*det(CSC)/(sum(diag(CSC))**(m-1)) #critério de mauschly
+w #critério de Mauschly
+
+gama <- 8-((2*81-27+3)/(48))
+gama
+
+
+chi <- -gama*log(w,base=exp(1))
+chi
+
+1-pchisq(chi,(m*(m-1)/2-1))
+```
+
+Com critério de Mauschly igual a 8.828e-11, gama igual a 5.125 e Estatística do teste 118.6461, o p-valor do teste de esfericidade é 5e-11. Portanto rejeita-se a hipótese de esfericidade da matriz de covariâncias e é necessário usar correções nos graus de liberdade para a análise dentre sujeitos.
+
+Cálculo das correções de graus de liberdade:
+```{r}
+################### correções dos graus de liberdade
+gg <- (sum(diag(CSC))**2)/((m-1)*sum((CSC)**2))
+gg
+
+hfl <- (9*(m-1)*gg-2)/((m-1)*(8-(m-1)*gg))
+hfl
+```
+
+
+Análise de Variância com medidas repetidas:
+```{r}
+modelo <- aov(moscab ~ (trat +bloco) * semana + Error(sujeito/semana), data=armadilhas)
+summary(modelo)
+```
+
+Com esses valores, não é possível rejeitar a hipótese nula de que os tratamentos e blocos não influenciam na quantidade de moscas brancas apeendidas pelas armadilhas, o que pode ser confirmado pelos gráficos abaixo:
+
+![](/cloud/project/trats.png)
+
+![](/cloud/project/bloco.png)
+
+
+Em relação a análise dentre sujeitos, existem evidências para rejeitar a hipóotese de igualdade entre as semanas.  Pelo gráfico boxplot abaixo, podemos verificar que com o decorrer do estudo a quantidade de moscas brancas apreendidas cresce.
+
+![](/cloud/project/semana media.png)
+
+![](/cloud/project/semana_boxplot.png)
+
+
+A interação entre o tempo e o tratamentos não é significativa, ou seja, no decorrer do estudo, as quantidades de moscas brancas apreendidas crescem igualmente entre as armadilhas de cada uma das variedades de tomateiro.
+![](/cloud/project/moscab_trat_total.png)
+
+
+Já a interação entre o tempo e os blocos é significativa, portanto a quantidade de moscas apreendidas cresce de forma diferente entre as armadilhas de cada bloco.
+
+![](/cloud/project/bloco_semana.png)
+
+
+Vale ressaltar que os p-valores anteriores estão errados. Portanto, corrigindo-os, observa-se que não houve mudança nos resultados:
+```{r}
+#semana
+1-pf(20.36,gg*8,gg*64)
+1-pf(20.36,hfl*8,hfl*64)
+# semana: trat
+1-pf(0.925,gg*32,gg*64)
+1-pf(0.925,hfl*32,hfl*64)
+#semana:bloco
+1-pf(3.06,gg*16,gg*64)
+1-pf(3.06,hfl*16,hfl*64)
+```
+
+
+
+Análise de variância desconsiderando as medidas repetidas:
+```{r,results='hold'}
+modelo2 <- aov(moscab~trat+bloco)
+summary(modelo2)
+shapiro.test(modelo2$residuals)
+
+```
+
+
+Análises de variância por semana e teste subjacentes em caso de significância dos tratamentos:
+
+
+
+```{r,results='hold'}
+#Análise de variância por semanas
+mod_semana1 <- aov(moscab~trat+bloco,data=armadilhas[semana=="1",])
+summary(mod_semana1)
+shapiro.test(mod_semana1$residuals)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana2 <- aov(moscab~trat+bloco,data=armadilhas[semana=="2",])
+summary(mod_semana2)
+shapiro.test(mod_semana2$residuals)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana3 <- aov(moscab~trat+bloco,data=armadilhas[semana=="3",])
+summary(mod_semana3)
+shapiro.test(mod_semana3$residuals)
+```
+
+
+
+```{r,results='hold'}
+mod_semana4 <- aov(moscab~trat+bloco,data=armadilhas[semana=="4",])
+summary(mod_semana4)
+shapiro.test(mod_semana4$residuals) # trat significativo
+TukeyHSD(mod_semana4)[1]
+scottknott(armadilhas$moscab[semana=="4"],armadilhas$trat[semana=="4"],8,229082)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana5 <- aov(moscab~trat+bloco,data=armadilhas[semana=="5",])
+summary(mod_semana5)
+shapiro.test(mod_semana5$residuals)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana6 <- aov(moscab~trat+bloco,data=armadilhas[semana=="6",])
+summary(mod_semana6)
+shapiro.test(mod_semana6$residuals)
+```
+
+
+```{r,results='hold'}
+mod_semana7 <- aov(moscab~trat+bloco,data=armadilhas[semana=="7",])
+summary(mod_semana7)
+shapiro.test(mod_semana7$residuals)
+```
+
+
+
+
+
+```{r,results='hold'}
+mod_semana8 <- aov(moscab~trat+bloco,data=armadilhas[semana=="8",])
+summary(mod_semana8)
+shapiro.test(mod_semana8$residuals)
+```
+
+
+```{r,results='hold'}
+mod_semana9 <- aov(moscab~trat+bloco,data=armadilhas[semana=="9",])
+summary(mod_semana9)
+shapiro.test(mod_semana9$residuals)
+```
+Note que apenas na semana 4 o efeito dos tratamentos foi significativo na quantidade de Moscas Brancas apreendidas nas armadilhas.
+
+
+
+## Ranques
+Estimativa dos parâmetros do modelo:
+```{r}
+m <- 9 #quantidade de medidas repetidas
+tapply(rank,semana,mean)
+tapply(rank,semana:trat,mean)-rep(tapply(rank,semana,mean),each=5)
+tapply(rank,semana:bloco,mean)-rep(tapply(rank,semana,mean),each=3)
+
+```
+
+Valores preditos e Resíduos (cada coluna indica uma semana):
+```{r}
+pred_res <- read.xlsx("/cloud/project/pred_res_armadilhas_ranks.xlsx")
+preditos <- pred_res[,c(13:21)]
+preditos
+
+residuos <- as.matrix(pred_res[,22:30])
+residuos
+```
+
+Matriz de covriâncias estimada e matriz 8x9 de contrastes fornecidas pelo SAS:
+```{r}
+S<- t(residuos)%*%residuos #matriz de covariâncias
+S
+
+C <- as.matrix(read.xlsx("/cloud/project/contrastes_armadilhas.xlsx"))
+C
+```
+
+Cálculo da matriz do teste de Mauschly
+```{r}
+CSC <- C%*%S%*%t(C) #Matriz 8x8 para teste de Mauschly 
+CSC
+```
+
+Teste de esfericidade:
+```{r}
+#################### teste de esfericidade
+
+w <- ((m-1)**(m-1))*det(CSC)/(sum(diag(CSC))**(m-1)) #critério de mauschly
+w #critério de Mauschly
+
+gama <- 8-((2*81-27+3)/(48))
+gama
+
+
+chi <- -gama*log(w,base=exp(1))
+chi #estatística do teste
+
+1-pchisq(chi,(m*(m-1)/2-1))
+```
+Com os valores registrados acima, é necessário usar correções ao teste F na análise dentre sujeitos.
+
+
+```{r}
+################### correções dos graus de liberdade
+gg <- (sum(diag(CSC))**2)/((m-1)*sum((CSC)**2))
+gg
+
+hfl <- (9*(m-1)*gg-2)/((m-1)*(8-(m-1)*gg))
+hfl
+```
+
+
+Análise de variância por medidas repetidas
+```{r}
+modelo<- aov(rank ~ (trat +bloco) * semana + Error(sujeito/semana), data=armadilhas)
+summary(modelo)
+```
+Novamente, não existem evidências para afirmar que exista algum tratamento ou bloco que seja diferente dos demais.
+
+![](/cloud/project/trat_rank.png)
+
+![](/cloud/project/bloco_rank.png)
+
+Para a análise dentre os sujeitos não existe o efeito das medidas repetidas, visto que semanalmente todos os ranques variam de 1 a 15.
+Calculando os p-valores com os graus de liberdade corrigidos, temos:
+```{r}
+# semana: trat
+1-pf(1.7,gg*32,gg*64)
+1-pf(1.7,hfl*32,hfl*64)
+#semana:bloco
+1-pf(4.776,gg*16,gg*64)
+1-pf(4.776,hfl*16,hfl*64)
+```
+Note que com as correções de esfericidade, o p-valor cresceu a ponto de não rejeitar a hipótese nula para interação entre tempo e tratamentos.
+Portanto, não existem evidências para rejeitar a hipótese de igualdade entre a interação do tempo e dos tratamentos, ou seja, os tratamentos mantém a mesma média de ranks por todo o estudo.
+
+
+![](/cloud/project/ranks_semana_trat.png)
+
+
+
+Já a hipótese de igualdade entre a interação dos blocos é rejeitada, portanto existe algum bloco cuja média de ranks muda de forma significativa durante o decorrer do estudo.
+
+![](/cloud/project/ranks_semana_bloco.png)
+
+
+Análise de variância desconsiderando as medidas repetidas:
+```{r,results='hold'}
+modelo2 <- aov(rank~trat+bloco)
+summary(modelo2)
+shapiro.test(modelo2$residuals)
+TukeyHSD(modelo2)[1]
+scottknott(rank,trat,128,1868.8)
+```
+
+Análises de variância por semana e teste subjacentes em caso de significância dos tratamentos:
+
+```{r,results='hold'}
+#Análise de variância por semanas
+mod_semana1 <- aov(rank~trat+bloco,data=armadilhas[semana=="1",])
+summary(mod_semana1)
+shapiro.test(mod_semana1$residuals)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana2 <- aov(rank~trat+bloco,data=armadilhas[semana=="2",])
+summary(mod_semana2)
+shapiro.test(mod_semana2$residuals)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana3 <- aov(rank~trat+bloco,data=armadilhas[semana=="3",])
+summary(mod_semana3)
+shapiro.test(mod_semana3$residuals)
+```
+
+
+
+```{r,results='hold'}
+mod_semana4 <- aov(rank~trat+bloco,data=armadilhas[semana=="4",])
+summary(mod_semana4)
+shapiro.test(mod_semana4$residuals)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana5 <- aov(rank~trat+bloco,data=armadilhas[semana=="5",])
+summary(mod_semana5)
+shapiro.test(mod_semana5$residuals)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana6 <- aov(rank~trat+bloco,data=armadilhas[semana=="6",])
+summary(mod_semana6)
+shapiro.test(mod_semana6$residuals)
+```
+
+
+```{r,results='hold'}
+mod_semana7 <- aov(rank~trat+bloco,data=armadilhas[semana=="7",])
+summary(mod_semana7)
+shapiro.test(mod_semana7$residuals)
+```
+
+
+
+
+
+```{r,results='hold'}
+mod_semana8 <- aov(moscab~trat+bloco,data=armadilhas[semana=="8",])
+summary(mod_semana8)
+shapiro.test(mod_semana8$residuals)
+```
+
+
+```{r,results='hold'}
+mod_semana9 <- aov(moscab~trat+bloco,data=armadilhas[semana=="9",])
+summary(mod_semana9)
+shapiro.test(mod_semana9$residuals)
+```
+
+
+
+
+
+
+
+
+#### Plantas
+## Dados brutos
+```{r,include=F}
+plantas <- read.xlsx("/cloud/project/Plantas_R.xlsx")
+colnames(plantas) <- c("semana","sujeito","trat","bloco","planta","moscab","rank")
+plantas$semana <- as.factor(plantas$semana)
+plantas$trat <- as.factor(plantas$trat)
+plantas$bloco <- as.factor(plantas$bloco)
+plantas$sujeito <- as.factor(plantas$sujeito)
+attach(plantas)
+```
+
+
+Estimativa dos parâmetros do modelo:
+```{r}
+m <- 7 #quantidade de medidas repetidas
+tapply(moscab,semana,mean)
+tapply(moscab,semana:trat,mean)-rep(tapply(moscab,semana,mean),each=5)
+tapply(moscab,semana:bloco,mean)-rep(tapply(moscab,semana,mean),each=3)
+```
+
+Valores preditos e Resíduos (cada coluna indica uma semana):
+```{r}
+pred_res <- read.xlsx("/cloud/project/pred_res_plantas.xlsx")
+preditos <- pred_res[,c(12:18)]
+preditos
+
+residuos <- as.matrix(pred_res[,19:25])
+residuos
+```
+
+Matriz de covariâncias estimada e matriz 8x9 de contrastes fornecidas pelo SAS:
+```{r}
+S<- t(residuos)%*%residuos #matriz de covariâncias
+S
+
+C <- as.matrix(read.xlsx("/cloud/project/contrastes_plantas.xlsx"))
+C
+```
+
+Cálculo da matriz do teste de Mauschly
+```{r}
+CSC <- C%*%S%*%t(C) #Matriz 8x8 para teste de Mauschly 
+CSC
+```
+
+Teste de esfericidade:
+```{r}
+#################### teste de esfericidade
+
+w <- ((m-1)**(m-1))*det(CSC)/(sum(diag(CSC))**(m-1)) #critério de mauschly
+w #critério de Mauschly
+
+gama <- 84-(2*m**2-3*m+3)/(6*(m-1))
+gama
+
+
+chi <- -gama*log(w,base=exp(1))
+chi
+
+1-pchisq(chi,(m*(m-1)/2-1))
+
+################### correções dos graus de liberdade
+```
+
+não há esfericidade na matriz de covariâncias estimada. É necessário usar correções ao teste F na análise dentre sujeitos.
+
+Cálculo das correções para os graus de liberdade
+```{r}
+gg <- (sum(diag(CSC))**2)/((m-1)*sum((CSC)**2))
+gg
+
+hfl <- (85*(m-1)*gg-2)/((m-1)*(84-(m-1)*gg))
+hfl
+```
+
+
+
+```{r}
+modelo <- aov(moscab ~ trat *bloco * semana + Error(sujeito/semana), data=plantas)
+summary(modelo)
+shapiro.test(residuos)
+scottknott(plantas$moscab,plantas$trat,84,74584,group=T)
+```
+
+Todos os efeitos foram significativos, inclusive a interação entre blocos e tratamentos. Portanto, existe algum tratamento em que a média é diferente das demais. Também existe algum bloco que tem médias diferentes dos demais e o efeito de interação não é nulo pra alguma combinação entre tratamentos e blocos.
+
+Os tratamentos 3, 6 e 7 aparentam ter menores resultados em relação aos outros:
+
+![](/cloud/project/plantas_trat.png)
+
+O bloco 1 aparenta ter menor incidência de moscas-brancas:
+
+![](/cloud/project/plantas_bloco.png)
+
+interação tratamento 1 e bloco 3, tratamento 4 e bloco 2 e tratamento 5 e bloco 3 tem maior incidência de moscas brancas.
+
+![](/cloud/project/plantas_interacao_trat_bloco.png)
+
+Calculandos os p-valores para a análise dentre os sujeitos com as correções nos graus de liberdade:
+```{r,results='hold'}
+#semana
+1-pf(14.21,gg*6,gg*504)
+1-pf(14.21,hfl*6,hfl*504)
+```
+
+Todos os efeitos são significativos com as correções nos graus de liberdade. Portanto, a quantidade de moscas brancas encontradas nas plantas muda significativamente no decorrer do estudo.
+
+![](/cloud/project/semana_plantas.png)
+![](/cloud/project/semanas_plantas_boxplot.png)
+
+```{r,results='hold'}
+# semana: trat
+1-pf(2.224,gg*36,gg*504)
+1-pf(2.224,hfl*36,hfl*504)
+```
+
+
+Além disso, o crescimento durante as semanas ocorre de forma desigual entre os tratamentos. Note que os tratamentos 4 e 5 mantém um ritmo acelerado de crescimento durante todo o estudo e ao final são ultrapassados pelo tratamento 1. 
+![](/cloud/project/plantas_trat_semana.png)
+
+```{r,results='hold'}
+#semana:bloco
+1-pf(2.557,gg*12,gg*504)
+1-pf(2.557,hfl*12,hfl*504)
+```
+
+
+O crescimento do número médio de moscas brancas nos bloco 2 e 3 é constante, porém, o bloco 1 apresenta crescimento bem lento e em algumas semanas até diminuição no número de parasitas encontrados.
+
+![](/cloud/project/plantas_bloco_semana.png)
+
+```{r,results='hold'}
+#semana:trat:bloco
+1-pf(2.006,gg*72,gg*504)
+1-pf(2.006,hfl*72,hfl*504)
+```
+
+![](/cloud/project/plantas_semana_trat_bloco.png)
+
+
+Análise de variância desconsiderando as medidas repetidas:
+```{r,results='hold'}
+modelo2 <- aov(moscab~trat*bloco)
+summary(modelo2)
+shapiro.test(modelo2$residuals)#
+TukeyHSD(modelo2)[1]
+scottknott(plantas$moscab,plantas$trat,714,1030498)
+
+```
+
+Análises de variância por semana e teste subjacentes em caso de significância dos tratamentos:
+
+```{r,results='hold'}
+#Análise de variância por semanas
+mod_semana1 <- aov(moscab~trat*bloco,data=plantas[semana=="1",])
+summary(mod_semana1)
+shapiro.test(mod_semana1$residuals)
+TukeyHSD(mod_semana1)[1]
+scottknott(plantas$moscab[semana=="1"],plantas$trat[semana=="1"],84,4354)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana2 <- aov(moscab~trat*bloco,data=plantas[semana=="2",])
+summary(mod_semana2)
+shapiro.test(mod_semana2$residuals)
+TukeyHSD(mod_semana1)[1]
+scottknott(plantas$moscab[semana=="2"],plantas$trat[semana=="2"],84,5024)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana3 <- aov(moscab~trat*bloco,data=plantas[semana=="3",])
+summary(mod_semana3)
+shapiro.test(mod_semana3$residuals)
+TukeyHSD(mod_semana1)[1]
+scottknott(plantas$moscab[semana=="3"],plantas$trat[semana=="3"],84,5502)
+```
+
+
+
+```{r,results='hold'}
+mod_semana4 <- aov(moscab~trat*bloco,data=plantas[semana=="4",])
+summary(mod_semana4)
+shapiro.test(mod_semana4$residuals) # trat significativo
+TukeyHSD(mod_semana4)[1]
+scottknott(plantas$moscab[semana=="4"],plantas$trat[semana=="4"],84,71783)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana5 <- aov(moscab~trat*bloco,data=plantas[semana=="5",])
+summary(mod_semana5)
+shapiro.test(mod_semana5$residuals)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana6 <- aov(moscab~trat*bloco,data=plantas[semana=="6",])
+summary(mod_semana6)
+shapiro.test(mod_semana6$residuals)
+TukeyHSD(mod_semana6)[1]
+scottknott(plantas$moscab[semana=="6"],plantas$trat[semana=="6"],84,93080)
+```
+
+
+```{r,results='hold'}
+mod_semana7 <- aov(moscab~trat*bloco,data=plantas[semana=="7",])
+summary(mod_semana7)
+shapiro.test(mod_semana7$residuals)
+TukeyHSD(mod_semana6)[1]
+scottknott(plantas$moscab[semana=="7"],plantas$trat[semana=="7"],84,240689)
+```
+
+
+
+## Ranques
+```{r,include=F}
+plantas <- read.xlsx("/cloud/project/Plantas_R.xlsx")
+colnames(plantas) <- c("semana","sujeito","trat","bloco","planta","moscab","rank")
+plantas$semana <- as.factor(plantas$semana)
+plantas$trat <- as.factor(plantas$trat)
+plantas$bloco <- as.factor(plantas$bloco)
+plantas$sujeito <- as.factor(plantas$sujeito)
+attach(plantas)
+```
+
+
+Estimativa dos parâmetros do modelo:
+```{r}
+m <- 7 #quantidade de medidas repetidas
+tapply(rank,semana,mean)
+tapply(rank,semana:trat,mean)-rep(tapply(rank,semana,mean),each=5)
+tapply(rank,semana:bloco,mean)-rep(tapply(rank,semana,mean),each=3)
+```
+
+Valores preditos e Resíduos (cada coluna indica uma semana):
+```{r}
+pred_res <- read.xlsx("/cloud/project/pred_res_plantas_rank.xlsx")
+preditos <- pred_res[,c(12:18)]
+preditos
+
+residuos <- as.matrix(pred_res[,19:25])
+residuos
+```
+
+Matriz de covriâncias estimada e matriz 8x9 de contrastes fornecidas pelo SAS:
+```{r}
+S<- t(residuos)%*%residuos #matriz de covariâncias
+S
+
+C <- as.matrix(read.xlsx("/cloud/project/contrastes_plantas.xlsx"))
+C
+```
+
+Cálculo da matriz do teste de Mauschly
+```{r}
+CSC <- C%*%S%*%t(C) #Matriz 8x8 para teste de Mauschly 
+CSC
+```
+
+Teste de esfericidade:
+```{r}
+#################### teste de esfericidade
+
+w <- ((m-1)**(m-1))*det(CSC)/(sum(diag(CSC))**(m-1)) #critério de mauschly
+w #critério de Mauschly
+
+gama <- 84-(2*m**2-3*m+3)/(6*(m-1))
+gama
+
+
+chi <- -gama*log(w,base=exp(1))
+chi
+
+1-pchisq(chi,(m*(m-1)/2-1))
+```
+Com p-valor 0.38, não é possível rejeitar a hipótese de esfericidade dos dados, portanto, não é necessário usar correções nos graus de liberdade.
+
+
+```{r}
+modelo <- aov(rank ~ trat *bloco * semana + Error(sujeito/semana), data=plantas)
+summary(modelo)
+shapiro.test(residuos)
+scottknott(plantas$rank,plantas$trat,84,43892,group=T)
+```
+Novamente, todos os efeitos foram significativos.
+Existe pelo menos um tratameto que tem ranques diferentes dos demais. Note que os ranks dos tratamentos 3, 6 e 7 são menores que os outros.
+
+As plantas do bloco do 1 ficaram com os menores ranks, como podemos observar pelos boxplots abaixo:
+
+![](/cloud/project/plantas_rank_trat.png)
+As interações 1:2, 4:2, 5:3 e 7:3 apresentaram ranks maiores que as outras:
+
+![](/cloud/project/plantas_rank_bloco.png)
+
+Novamente, todos os efeitos e interações são significativos, exceto pela variação semanal, que não ocorre pois os ranks sempre variam de 0 a 105. Essa característica induz os valores médios semanais a serem 53.
+
+![](/cloud/project/plantas_rank_int_trat_bloco.png)
+
+Pela linha temporal abaixo, podemos ver que os tratamentos apresentam comportamentos diferentes no decorrer do estudo. os tratamentos sem a presença da variedade selvagem crescem enquanto os tratamentos com a variedade selvagem se mantém em níveis baixos por todo o período estudado.
+
+![](/cloud/project/plantas_rank_semana_trat.png)
+
+Em relação aos blocos, temos que o bloco 2 apresenta uma queda no início do estudo e se estabiliza em torno do ranque médio 60. O bloco 3 apresenta um crescimento e também estabiliza em torno do valor 60. Já o bloco 1 tem queda no ranque médio semanal e por fim uma leve alta.
+![](/cloud/project/plantas_rank_semana_bloco.png)
+
+Análise de variância desconsiderando as medidas repetidas:
+```{r,results='hold'}
+modelo2 <- aov(rank~trat*bloco)
+summary(modelo2)
+shapiro.test(modelo2$residuals)#
+TukeyHSD(modelo2)[1]
+scottknott(plantas$rank,plantas$trat,714,338612)
+```
+
+Análises de variância por semana e teste subjacentes em caso de significância dos tratamentos:
+```{r,results='hold'}
+#Análise de variância por semanas
+mod_semana1 <- aov(rank~trat*bloco,data=plantas[semana=="1",])
+summary(mod_semana1)
+shapiro.test(mod_semana1$residuals)
+TukeyHSD(mod_semana1)
+scottknott(plantas$rank[semana=="1"],plantas$trat[semana=="1"],84,48032)
+```
+
+
+```{r,results='hold'}
+mod_semana2 <- aov(rank~trat*bloco,data=plantas[semana=="2",])
+summary(mod_semana2)
+shapiro.test(mod_semana2$residuals)
+TukeyHSD(mod_semana1)
+scottknott(plantas$rank[semana=="2"],plantas$trat[semana=="2"],84,32740)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana3 <- aov(rank~trat*bloco,data=plantas[semana=="3",])
+summary(mod_semana3)
+shapiro.test(mod_semana3$residuals)
+TukeyHSD(mod_semana1)
+scottknott(plantas$rank[semana=="3"],plantas$trat[semana=="3"],84,31428)
+```
+
+
+
+
+```{r,results='hold'}
+mod_semana4 <- aov(rank~trat*bloco,data=plantas[semana=="4",])
+summary(mod_semana4)
+shapiro.test(mod_semana4$residuals) # trat significativo
+TukeyHSD(mod_semana4)
+scottknott(plantas$rank[semana=="4"],plantas$trat[semana=="4"],84,22812)
+```
+
+
+
+
+
+```{r,results='hold'}
+mod_semana5 <- aov(rank~trat*bloco,data=plantas[semana=="5",])
+summary(mod_semana5)
+shapiro.test(mod_semana5$residuals)
+TukeyHSD(mod_semana4)
+scottknott(plantas$rank[semana=="5"],plantas$trat[semana=="5"],84,41491)
+```
+
+
+
+```{r,results='hold'}
+mod_semana6 <- aov(rank~trat*bloco,data=plantas[semana=="6",])
+summary(mod_semana6)
+shapiro.test(mod_semana6$residuals)
+TukeyHSD(mod_semana6)
+scottknott(plantas$rank[semana=="6"],plantas$trat[semana=="6"],84,30986)
+```
+
+
+
+
+
+```{r,results='hold'}
+mod_semana7 <- aov(rank~trat*bloco,data=plantas[semana=="7",])
+summary(mod_semana7)
+shapiro.test(mod_semana7$residuals)
+TukeyHSD(mod_semana6)
+scottknott(plantas$rank[semana=="7"],plantas$trat[semana=="7"],84,33513)
+```
+
+
+
+#### Colheita
+
+```{r,echo=T}
+colheita <- read.xlsx("/cloud/project/Colheita.xlsx")
+colheita$bloco <- factor(colheita$bloco)
+colheita$trat <- factor(colheita$trat)
+colheita$planta <- factor(colheita$planta)
+attach(colheita)
+```
+
+Na última parte do estudo, fiz uma regressão de Poisson pra os dados de colheita.
+
+A média estimada de frutos por planta é 6,81 e a variância é 6,42. Assim, não há o problema de superdispersão.
+
+De qualquer forma, optei por testar modelos de Poisson e Binomial Negativa.
+O melhor modelo, pelo critério AIC considerando as variáveis explicativas tratamento, bloco e interação trat:bloco, foi o modelo apenas com intercepto e função de ligação logaritmo.
+
+```{r}
+mean(frutos)
+var(frutos)
+```
+
+# Modelos Poisson
+```{r}
+# modelo saturado (trat, bloco e interação)
+mod1 <-glm(frutos ~ bloco*trat, data = colheita,family = poisson)
+summary(mod1) #AIC=296.9
+
+#modelo trat e bloco
+mod2 <-glm(frutos ~ bloco+trat, data = colheita,family = poisson(link="sqrt"))
+summary(mod2) #AIC=288.36
+
+#modelo trat
+mod3 <-glm(frutos ~ trat, data = colheita,family = poisson)
+summary(mod3) #AIC=284.39
+
+#modelo bloco
+mod4 <-glm(frutos ~ bloco, data = colheita,family = poisson)
+summary(mod4) #AIC=284.86
+#modelo vazio
+mod5 <-glm(frutos ~ 1, data = colheita,family = poisson)
+summary(mod5) #AIC=281.19
+```
+
+
+# Modelos Binomial Negativa
+```{r}
+# modelo saturado
+mod1_binneg <- glm.nb(frutos~bloco*trat, data = colheita)
+summary(mod1_binneg) #AIC = 298.9
+
+# modelo trat bloco
+mod3_binneg <- glm.nb(frutos~trat+bloco, data = colheita)
+summary(mod3_binneg) #AIC = 290.36
+
+# modelo trat
+mod5_binneg <- glm.nb(frutos~trat, data = colheita)
+summary(mod5_binneg) #AIC = 286.69
+
+# modelo bloco
+mod6_binneg <- glm.nb(frutos~bloco, data = colheita)
+summary(mod6_binneg) #AIC = 286.86
+
+# modelo vazio
+mod8_binneg <- glm.nb(frutos~1, data = colheita)
+summary(mod8_binneg) #AIC = 283.19
+```
+
+Vale ressaltar que em todos os modelos, nenhum fator foi significativo. Portanto, o melhor modelo não tem nenhuma variável explicativa.
+
+
+Melhor modelo (Poisson - vazio):
+
+$log(\mu_i) = 1.91937$
+
+
+```{r}
+summary(mod5)
+deviance <- deviance(mod5)
+
+res_dev <- resid(mod5,type="deviance")
+plot(res_dev)+abline(0,0)
+shapiro.test(res_dev)
+1-pchisq(deviance,59)
+```
+
+O resíduos deviance para este modelo é 56,59. Pelo teste Qui-quadrado de razão de verossimilhança, o modelo está adequado (p-valor 0.564761 com 59 graus de liberdade).
+
+Gráfico dos valores preditos vs resíduos (todos os valores preditos são iguais, mas dei uma chocalhada para mehorar a visualização.)
+
+```{r}
+plot(res_dev ~ jitter(mod5$fitted.values, 0.5), pch = 15,main="Valores preditos X resíduos",xlab="Valores preditos",ylab="Resíduos deviance")
+abline(0,0)
+```
+Gráfico envelope:
+```{r}
+envelope=function(modelo){
+  dados=na.omit(modelo$data)
+  nsim=100
+  n=modelo$df.null+1
+  r1=sort(rstandard(modelo,type='deviance'))
+  m1=matrix(0,nrow=n,ncol=nsim)
+  a2=simulate(modelo,nsim=nsim)
+  
+  for (i in 1:nsim){
+    dados$y=a2[,i]
+    aj=update(modelo,y~.,data=dados)
+    m1[,i]=sort(rstandard(aj,type='deviance'))}
+  
+  li=apply(m1,1,quantile,0.025)
+  m=apply(m1,1,quantile,0.5)
+  ls=apply(m1,1,quantile,0.975)
+  
+  quantis=qnorm((1:n-0.5)/n)
+  
+  plot(rep(quantis,2),c(li,ls),type='n',xlab='Percentil da N(0,1)',ylab='Resíduos')
+  title('Gráfico Normal de Probabilidades')
+  lines(quantis,li,type='l')
+  lines(quantis,m,type='l',lty=2)
+  lines(quantis,ls,type='l')
+  points(quantis,r1,pch=16,cex=0.75)
+}
+envelope(mod5)
+```
+
