@@ -1,0 +1,333 @@
+---
+title: "aditividade"
+author: "Iago"
+date: "29/03/2021"
+output: html_document
+---
+#### Aditividade
+```{r,include=F}
+library(openxlsx)
+library(additivityTests)
+library(dplyr)
+library(ggplot2)
+options(dplyr.summarise.inform = FALSE)
+library(dae)
+```
+
+## Armadilhas
+# Dados brutos
+```{r,include=FALSE}
+armadilhas <- read.xlsx("/cloud/project/Armadilhas_R.xlsx")
+armadilhas <- armadilhas[,c(3,4,5,6,8,9)]
+colnames(armadilhas) <- c("sujeito","semana","trat","bloco","moscab","rank")
+armadilhas$semana <- as.factor(armadilhas$semana)
+armadilhas$trat <- as.factor(armadilhas$trat)
+armadilhas$bloco <- as.factor(armadilhas$bloco)
+armadilhas$sujeito <- as.factor(armadilhas$sujeito)
+attach(armadilhas)
+```
+
+Gráfico dos efeitos da interação trat : bloco:
+
+```{r,message=F,warning=F}
+medias <- armadilhas%>%
+  group_by(trat,bloco)%>%
+  summarise(media=mean(moscab),sd=sd(moscab))
+medias$efeito <- medias$media-mean(moscab)
+medias$cl <- medias$efeito-1.96*(medias$sd/3)
+medias$cu <- medias$efeito+1.96*(medias$sd/3)
+
+fp <- ggplot(data=medias, aes(x=trat:bloco, y=efeito, ymin=cl, ymax=cu)) +
+        geom_pointrange() + 
+        geom_hline(yintercept=0, lty=2) +  # add a dotted line at x=1 after flip
+        coord_flip() +  # flip coordinates (puts labels on y axis)
+        xlab("Interação") + ylab("Intervalo de confiança (95%)") + ggtitle("Intervalo de confiança para os efeitos da interação")+ theme_bw()  # use a white background
+print(fp)
+```
+
+Note que apenas o efeito das interações tratamento 3 e bloco 2 e tratamento 5 e bloco 2 não incluem o 0 em seu intervalo de confiança de 95%.
+
+
+
+Para o teste de aditividade a seguir, fiz as médias das interações sem levar em contas as medidas repetidas.
+
+```{r,results="hold"}
+#armadilhas dados brutos média 
+options(dplyr.summarise.inform = FALSE)
+matriz <- armadilhas%>%
+  group_by(trat,bloco)%>%
+  summarise(media=mean(moscab))
+matriz
+mod <- aov(media~trat+bloco,data=matriz)
+car:::tukeyNonaddTest(mod)
+```
+O teste de aditividade não rejeita a hipótese nula. Portanto, não há evidências para rejeitar a hipótese de aditividade entre tratamentos e blocos. 
+
+```{r}
+#armadilhas dados inteiros
+mod <- aov(moscab~trat+bloco,data=armadilhas)
+car:::tukeyNonaddTest(mod)
+```
+Com os dados inteiros também não é possível rejeitar a hipótese de aditividade.
+
+Fazendo o teste semanalmente, também temos que em nenhuma semana há evidência para se rejeitar a hipótese de aditividade dos tratamentos e blocos.
+```{r}
+
+for(i in 1:9){
+  semana <- armadilhas[armadilhas$semana==i,]
+  mod <- aov(moscab~trat+bloco,data=semana)
+teste <- car:::tukeyNonaddTest(mod)
+# p-valor é menor que 0.05?
+print(teste[2]<0.05)
+  }
+
+```
+Apenas na semana 8 os efeitos não são aditivos.
+
+Não fiquei satisfeito com esse resultado, então fiz no SAS um teste de tukey para aditividade (beaseado nesse artigo https://www.lexjansen.com/scsug/1992/SCSUG92035.pdf) considerando medidas repetidas e o resultado foi: 
+
+![](/cloud/project/armadilhas.png)
+
+Com p-valor 0.25, não é possível rejeitar a hipótese de aditividade para as armadilhas com dados brutos
+
+# Ranques
+Gráfico dos efeitos da interação trat : bloco:
+
+```{r}
+medias <- armadilhas%>%
+  group_by(trat,bloco)%>%
+  summarise(media=mean(rank),sd=sd(rank))
+medias$efeito <- medias$media-mean(rank)
+medias$cl <- medias$efeito-1.96*(medias$sd/3)
+medias$cu <- medias$efeito+1.96*(medias$sd/3)
+
+fp <- ggplot(data=medias, aes(x=trat:bloco, y=efeito, ymin=cl, ymax=cu)) +
+        geom_pointrange() + 
+        geom_hline(yintercept=0, lty=2) +  # add a dotted line at x=1 after flip
+        coord_flip() +  # flip coordinates (puts labels on y axis)
+        xlab("Interação") + ylab("Intervalo de confiança (95%)") + ggtitle("Intervalo de confiança para os efeitos da interação - Ranks")+
+        theme_bw()  # use a white background
+print(fp)
+```
+
+Note que 7 das 15 interações não possuem o 0 em seu intervalo de confiança.
+Teste de adtividade sem as medidas repetidas:
+
+```{r,results="hold"}
+#armadilhas dados brutos média por semana
+options(dplyr.summarise.inform = FALSE)
+matriz <- armadilhas%>%
+  group_by(trat,bloco)%>%
+  summarise(media=mean(rank))
+matriz
+mod <- aov(media~trat+bloco,data=matriz)
+car:::tukeyNonaddTest(mod)
+```
+```{r}
+#armadilhas dados inteiros
+mod <- aov(rank~trat+bloco,data=armadilhas)
+car:::tukeyNonaddTest(mod)
+```
+
+Novamente, não há evidências para rejeitar a hipótese de aditividade.
+
+
+Teste de aditividade semanal
+```{r}
+
+for(i in 1:9){
+  semana <- armadilhas[armadilhas$semana==i,]
+  mod <- aov(rank~trat+bloco,data=semana)
+teste <- car:::tukeyNonaddTest(mod)
+# p-valor é menor que 0.05?
+print(teste[2]<0.05)
+  }
+
+```
+Em duas das 9 semanas houve evidência para rejeitar a hipótese de aditividade.
+
+Pelo teste incluindo as medidas repetidas, temos:
+
+![](/cloud/project/armadilhas_rank.png)
+
+Não é possível rejeitar a hipótese de aditividade para os ranks.
+
+
+## Plantas
+```{r,include=F}
+plantas <- read.xlsx("/cloud/project/Plantas_R.xlsx")
+colnames(plantas) <- c("semana","sujeito","trat","bloco","planta","moscab","rank")
+plantas$semana <- as.factor(plantas$semana)
+plantas$trat <- as.factor(plantas$trat)
+plantas$bloco <- as.factor(plantas$bloco)
+plantas$sujeito <- as.factor(plantas$sujeito)
+attach(plantas)
+```
+
+Gráfico dos efeitos da interação trat : bloco:
+
+```{r}
+medias <- plantas%>%
+  group_by(trat,bloco)%>%
+  summarise(media=mean(moscab),sd=sd(moscab))
+medias$efeito <- medias$media-mean(moscab)
+medias$cl <- medias$efeito-1.96*(medias$sd/sqrt(7))
+medias$cu <- medias$efeito+1.96*(medias$sd/sqrt(7))
+
+fp <- ggplot(data=medias, aes(x=trat:bloco, y=efeito, ymin=cl, ymax=cu)) +
+        geom_pointrange() + 
+        geom_hline(yintercept=0, lty=2) +  # add a dotted line at x=1 after flip
+        coord_flip() +  # flip coordinates (puts labels on y axis)
+        xlab("Interação") + ylab("Intervalo de confiança (95%)") + ggtitle("Intervalo de confiança para os efeitos da interação")+
+        theme_bw()  # use a white background
+print(fp)
+```
+
+A maioria dos intervalos de confiança para os efeitos de interação nas plantas não contém o valor 0. 
+
+```{r,results="hold"}
+
+#Plantas dados brutos média 
+options(dplyr.summarise.inform = FALSE)
+matriz <- plantas%>%
+  group_by(trat,bloco)%>%
+  summarise(media=mean(moscab))
+matriz
+mod <- aov(media~trat+bloco,data=matriz)
+car:::tukeyNonaddTest(mod)
+```
+
+```{r}
+
+#plantas dados inteiros
+mod <- aov(moscab~trat+bloco,data=plantas)
+car:::tukeyNonaddTest(mod)
+```
+
+Pelo teste desconsiderando as medidas repetidas, não há indícios para rejeitar a hipótese de aditividade.
+
+Teste de aditividade semanal
+```{r}
+for(i in 1:7){
+  semana <- plantas[plantas$semana==i,]
+  mod <- aov(moscab~trat+bloco,data=semana)
+teste <- car:::tukeyNonaddTest(mod)
+# p-valor é menor que 0.05?
+print(teste[2]<0.05)
+  }
+```
+Os efeitos não são aditivos em 5 das 7 semanas.
+
+Pelo teste incluindo as medidas repetidas, temos:
+![](/cloud/project/plantas.png)
+
+Com p-valor <0.001, rejeita-se a hipótese de aditividade dos efeitos tratamentos e blocos para os dados de plantas.
+
+# Ranques
+
+Gráfico dos efeitos da interação trat : bloco:
+
+```{r}
+medias <- plantas%>%
+  group_by(trat,bloco)%>%
+  summarise(media=mean(rank),sd=sd(rank))
+medias$efeito <- medias$media-mean(rank)
+medias$cl <- medias$efeito-1.96*(medias$sd/sqrt(7))
+medias$cu <- medias$efeito+1.96*(medias$sd/sqrt(7))
+
+fp <- ggplot(data=medias, aes(x=trat:bloco, y=efeito, ymin=cl, ymax=cu)) +
+        geom_pointrange() + 
+        geom_hline(yintercept=0, lty=2) +  # add a dotted line at x=1 after flip
+        coord_flip() +  # flip coordinates (puts labels on y axis)
+        xlab("Interação") + ylab("Intervalo de confiança (95%)") + ggtitle("Intervalo de confiança para os efeitos da interação")+
+        theme_bw()  # use a white background
+print(fp)
+```
+
+
+
+```{r,results="hold"}
+#Plantas dados brutos média 
+options(dplyr.summarise.inform = FALSE)
+matriz <- plantas%>%
+  group_by(trat,bloco)%>%
+  summarise(media=mean(rank))
+matriz
+mod <- aov(media~trat+bloco,data=matriz)
+car:::tukeyNonaddTest(mod)
+```
+
+```{r}
+
+#armadilhas dados inteiros
+mod <- aov(rank~trat+bloco,data=plantas)
+car:::tukeyNonaddTest(mod)
+```
+
+Desconsiderando as medidas repetidas, a hipótese de aditividade é rejeitada.
+
+Teste de aditividade semanal
+```{r}
+for(i in 1:7){
+  semana <- plantas[plantas$semana==i,]
+  mod <- aov(rank~trat+bloco,data=semana)
+teste <- car:::tukeyNonaddTest(mod)
+# p-valor é menor que 0.05?
+print(teste[2]<0.05)
+  }
+```
+Em nenhuma semana a hipótese de aditividade é rejeitada em 4 das 7 semanas.
+
+Pelo teste incluindo as medidas repetidas, temos:
+
+![](/cloud/project/plantas_rank.png)
+
+Com p-valor <0.001 a hipótese de aditividade é rejeitada.
+
+
+
+### Transformação de BoxCox
+
+Como sugerido em alguns artigos que encontrei, a transformação de BoxCox é útil para se corrigir a não aditividade.
+Fazendo os cálculos para os dados brutos de Plantas, obtemos um valor de transformação \lambda igual a 0.063.
+
+Com os valores transformados, os testes de aditividade mudaram o resultado:
+```{r}
+plantas$moscab2 <- ((plantas$moscab**0.063)-1)/0.063
+#armadilhas dados inteiros
+mod <- aov(moscab2~trat+bloco,data=plantas)
+car:::tukeyNonaddTest(mod)
+```
+
+![](/cloud/project/boxcox.png)
+
+
+Porém, na Análise de variância por medidas repetidas o fator de interação trat:bloco continua significativo.
+
+```{r}
+#modelo sem transformação
+modelo <- aov(moscab ~ (trat *bloco) * semana + Error(sujeito/semana), data=plantas)
+summary(modelo)
+
+#modelo com transformação
+modelo1 <- aov(moscab2 ~ (trat *bloco) * semana + Error(sujeito/semana), data=plantas)
+summary(modelo1)
+```
+
+Modelo sem interações:
+```{r}
+modelo_add <- aov(moscab2 ~ (trat +bloco) * semana + Error(sujeito/semana), data=plantas)
+summary(modelo_add)
+```
+
+O modelo sem interação respeita a suposição de esfericidade. Não respeita a normalidade nem homocedasticidade. É necessário usar os ranques.
+
+Para os ranques não consegui uma transfromação BoxCox que satisfaça a aditividade. Na verdade, não sei nem se faz sentido transformar ranques por BoxCox. O mais perto de uma situação de aditividade entre os ranques foi por meio da transformação exponencial, porém, ainda assim o teste de Tukey rejeita a hipótese de aditividade.
+
+
+
+
+
+
+
+
